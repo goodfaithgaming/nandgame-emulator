@@ -1,12 +1,16 @@
 package main;
 import java.util.Arrays;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Emulator {
 	private short a;
 	private short d;
 	private short pc;
 	private short[] ram;
 	private short[] instruction;
+	private List<Peripheral> mapping;
 	
 	public Emulator(short[] instruction) {
 		this.ram = new short[0x10000];
@@ -14,6 +18,7 @@ public class Emulator {
 		this.a = 0;
 		this.d = 0;
 		this.instruction = Arrays.copyOf(instruction, 0x10000);
+		this.mapping = new ArrayList<Peripheral>();
 	}
 	
 	public void step() {
@@ -128,19 +133,34 @@ public class Emulator {
 	}
 	
 	public short getRam(short a) {
+		for (Peripheral block : mapping) {
+			if (block.inRange(a)) {
+				return block.getMem(a);
+			}
+		}
 		return this.ram[a & 0xFFFF];
 	}
 	
 	public short getRam() {
-		return this.ram[this.a & 0xFFFF];
+		return this.getRam(this.a);
 	}
 	
 	public void setRam(short a, short r) {
-		this.ram[a & 0xFFFF] = r;
+		boolean hitPeripheral = false;
+		for (Peripheral block : mapping) {
+			if (block.inRange(a)) {
+				block.setMem(a, r);
+				hitPeripheral = true;
+				break;
+			}
+		}
+		if (!hitPeripheral) {
+			this.ram[a & 0xFFFF] = r;
+		}
 	}
 	
 	public void setRam(short r) {
-		this.ram[this.a & 0xFFFF] = r;
+		this.setRam(this.a,r);
 	}
 	
 	public short getInstruction(short pc) {
@@ -148,7 +168,7 @@ public class Emulator {
 	}
 	
 	public short getInstruction() {
-		return this.instruction[this.pc & 0xFFFF];
+		return this.getInstruction(this.pc);
 	}
 
 	public short getA() {
@@ -157,6 +177,17 @@ public class Emulator {
 
 	public short getD() {
 		return d;
+	}
+	
+	public void addMapping(int index, Peripheral block) {
+		this.mapping.add(index, block);
+	}
+	
+	public void addMapping(Peripheral block) {
+		this.mapping.add(block);
+	}
+	public void removeMapping(int index) {
+		this.mapping.remove(index);
 	}
 	
 
